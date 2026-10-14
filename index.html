@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wolfenbox.js</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0e0d0b;
+      --panel: #17150f;
+      --line: #3a3224;
+      --text: #f3ead6;
+      --muted: #b3a78c;
+      --amber: #e0b15a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(1000px 480px at 10% -10%, rgba(224, 177, 90, 0.08), transparent 50%),
+        var(--bg);
+      color: var(--text);
+      font: 15px/1.5 ui-monospace, "Cascadia Code", "Segoe UI Mono", Menlo, Consolas, monospace;
+    }
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: 0.18em;
+      font-weight: 700;
+    }
+    .lede { margin: 0 0 22px; color: var(--muted); max-width: 62ch; }
+    .app {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    button, label.keep {
+      font: inherit;
+      color: var(--text);
+      background: #241f16;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--amber); }
+    button:disabled { opacity: 0.45; cursor: progress; }
+    label.keep { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); }
+    .meter {
+      margin-top: 14px;
+      height: 8px;
+      background: #2a2418;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .meter > div {
+      height: 100%;
+      width: 0;
+      background: var(--amber);
+    }
+    .log {
+      margin: 12px 0 0;
+      min-height: 9.5em;
+      max-height: 220px;
+      overflow: auto;
+      padding: 10px 12px;
+      background: #100e0b;
+      border-radius: 8px;
+      color: #d9cba8;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+    .notes {
+      margin-top: 12px;
+      display: grid;
+      gap: 6px;
+    }
+    .notes span { color: var(--muted); font-size: 12px; }
+    input[type="text"] {
+      font: inherit;
+      color: var(--text);
+      background: #100e0b;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .clock { margin-left: auto; color: var(--amber); font-size: 12px; }
+    pre {
+      margin: 22px 0 0;
+      padding: 14px;
+      overflow: auto;
+      background: #100e0b;
+      border-radius: 10px;
+      color: #efe2c4;
+      font-size: 12px;
+    }
+    h2 { font-size: 13px; letter-spacing: 0.14em; margin: 26px 0 8px; }
+    #mount {
+      height: 420px;
+      margin-top: 8px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>WOLFENBOX</h1>
+    <p class="lede">
+      A small raycasting maze for the corner of a JavaScript app. Open it while a long job runs.
+      The page stays live — type in the notes field while you play.
+    </p>
+    <section class="app" aria-label="Sample job">
+      <div class="row">
+        <button id="run" type="button">Run a long job</button>
+        <button id="open" type="button">Open the game</button>
+        <button id="embed" type="button">Mount in this page</button>
+        <label class="keep"><input id="keep" type="checkbox" /> Keep open when the job ends</label>
+        <span class="clock" id="clock">page 0.0s</span>
+      </div>
+      <div class="meter" aria-hidden="true"><div id="bar"></div></div>
+      <div class="log" id="log">Idle. Start a job and a play window opens beside the work.</div>
+      <label class="notes">
+        <span>Notes — this stays editable during the job</span>
+        <input id="notes" type="text" placeholder="Type here while the maze is open" />
+      </label>
+    </section>
+    <div id="mount"></div>
+    <h2>IN YOUR APP</h2>
+    <pre>import { Wolfenbox } from 'wolfenbox.js'
+
+await Wolfenbox.during(async (box) => {
+  box.setStatus('Packing assets')
+  box.setProgress(0.4)
+  await longOperation()
+}, { title: 'Packaging build' })</pre>
+  </main>
+  <script type="module">
+    import { Wolfenbox } from './src/index.js'
+
+    const logEl = document.querySelector('#log')
+    const barEl = document.querySelector('#bar')
+    const runBtn = document.querySelector('#run')
+    const started = performance.now()
+    setInterval(() => {
+      document.querySelector('#clock').textContent =
+        'page ' + ((performance.now() - started) / 1000).toFixed(1) + 's'
+    }, 200)
+
+    function log(line) {
+      logEl.textContent += (logEl.textContent.endsWith('\n') || logEl.textContent === '' ? '' : '\n') + line
+      logEl.scrollTop = logEl.scrollHeight
+    }
+
+    const steps = [
+      'Reading the queue',
+      'Packing assets',
+      'Optimizing files',
+      'Uploading parts',
+      'Verifying checksums',
+      'Publishing',
+    ]
+
+    runBtn.addEventListener('click', async () => {
+      runBtn.disabled = true
+      logEl.textContent = ''
+      barEl.style.width = '0%'
+      const keepOpen = document.querySelector('#keep').checked
+      try {
+        await Wolfenbox.during(async (box) => {
+          for (let i = 0; i < steps.length; i++) {
+            box.setStatus(steps[i])
+            log(steps[i])
+            for (let part = 1; part <= 5; part++) {
+              await new Promise((resolve) => setTimeout(resolve, 280))
+              const value = (i + part / 5) / steps.length
+              box.setProgress(value)
+              barEl.style.width = (value * 100).toFixed(1) + '%'
+            }
+          }
+          box.setStatus('Done')
+          box.setProgress(1)
+          barEl.style.width = '100%'
+          log('Done')
+        }, { title: 'Packaging build', keepOpen })
+      } finally {
+        runBtn.disabled = false
+      }
+    })
+
+    let floating = null
+    document.querySelector('#open').addEventListener('click', () => {
+      if (floating && !floating.closed) {
+        floating.focus()
+        return
+      }
+      floating = Wolfenbox.open({
+        title: 'WOLFENBOX',
+        status: 'Free play',
+      })
+    })
+
+    let embedded = null
+    document.querySelector('#embed').addEventListener('click', () => {
+      const mount = document.querySelector('#mount')
+      mount.style.display = 'block'
+      if (embedded && !embedded.closed) {
+        embedded.focus()
+        return
+      }
+      embedded = Wolfenbox.mount(mount, {
+        title: 'Embedded maze',
+        status: 'Mounted in your layout',
+      })
+    })
+  </script>
+</body>
+</html>

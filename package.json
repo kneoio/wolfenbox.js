@@ -1,0 +1,29 @@
+{
+  "name": "wolfenbox.js",
+  "version": "0.1.0",
+  "description": "Wolfenstein-style raycasting maze that drops into a JS app as a floating window while a long operation runs.",
+  "type": "module",
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "index.html",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test tests/sim.test.mjs",
+    "demo": "python3 -m http.server 5179"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
