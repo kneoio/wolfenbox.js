@@ -1,4 +1,4 @@
-import { TEX, TILE, VIEW_H, VIEW_W } from './constants.js'
+import { SPRITE, TEX, TILE, VIEW_H, VIEW_W } from './constants.js'
 import { buildAssets } from './textures.js'
 
 function lerp(a, b, t) {
@@ -41,19 +41,19 @@ function tileColor(tile, open) {
   }
 }
 
-function blit(buf, viewW, viewH, tex, dx, dy, scale) {
-  const size = (TEX * scale) | 0
+function blit(buf, viewW, viewH, tex, dx, dy, scale, texSize) {
+  const span = texSize * scale
   const x0 = Math.max(0, dx | 0)
   const y0 = Math.max(0, dy | 0)
-  const x1 = Math.min(viewW, (dx + size) | 0)
-  const y1 = Math.min(viewH, (dy + size) | 0)
+  const x1 = Math.min(viewW, (dx + span) | 0)
+  const y1 = Math.min(viewH, (dy + span) | 0)
   for (let y = y0; y < y1; y++) {
     const sy = ((y - dy) / scale) | 0
-    if (sy < 0 || sy >= TEX) continue
+    if (sy < 0 || sy >= texSize) continue
     for (let x = x0; x < x1; x++) {
       const sx = ((x - dx) / scale) | 0
-      if (sx < 0 || sx >= TEX) continue
-      const ti = (sy * TEX + sx) * 4
+      if (sx < 0 || sx >= texSize) continue
+      const ti = (sy * texSize + sx) * 4
       if (tex[ti + 3] < 16) continue
       const di = (y * viewW + x) * 4
       buf[di] = tex[ti]
@@ -221,15 +221,16 @@ export function createRenderer(ctx) {
     const shade = Math.max(0.22, 1 - Math.min(0.75, transformY * 0.05))
     const tint = spr.tint
     const tex = spr.tex
+    const texSize = SPRITE
     for (let stripe = clipX0; stripe < clipX1; stripe++) {
-      const texX = (((stripe - drawStartX) * TEX) / spriteW) | 0
-      if (texX < 0 || texX >= TEX) continue
+      const texX = (((stripe - drawStartX) * texSize) / spriteW) | 0
+      if (texX < 0 || texX >= texSize) continue
       for (let y = clipY0; y < clipY1; y++) {
-        const texY = (((y - drawStartY) * TEX) / spriteH) | 0
-        if (texY < 0 || texY >= TEX) continue
+        const texY = (((y - drawStartY) * texSize) / spriteH) | 0
+        if (texY < 0 || texY >= texSize) continue
         const zi = y * w + stripe
         if (zbuf[zi] <= transformY) continue
-        const ti = (texY * TEX + texX) * 4
+        const ti = (texY * texSize + texX) * 4
         if (tex[ti + 3] < 16) continue
         const di = zi * 4
         buf[di] = Math.min(255, tex[ti] * shade * tint[0])
@@ -365,10 +366,11 @@ export function createRenderer(ctx) {
     const tex = firing ? assets.weapon.fire : assets.weapon.idle
     const bob = world.player.moving ? Math.sin(time * 10) * 4 : Math.sin(time * 2)
     const sway = world.player.moving ? Math.cos(time * 10) * 3 : 0
-    const scale = 2
-    const dx = (w - TEX * scale) / 2 + sway
-    const dy = h - TEX * scale + 18 + bob - (firing ? 6 : 0)
-    blit(buf, w, h, tex, dx, dy, scale)
+    const shown = 132
+    const scale = shown / SPRITE
+    const dx = (w - shown) / 2 + sway
+    const dy = h - shown + 18 + bob - (firing ? 6 : 0)
+    blit(buf, w, h, tex, dx, dy, scale, SPRITE)
   }
 
   function clear() {

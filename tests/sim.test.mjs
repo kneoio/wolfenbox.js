@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { TILE, VIEW_H, VIEW_W } from '../src/constants.js'
+import { SPRITE, TILE, VIEW_H, VIEW_W } from '../src/constants.js'
 import { generateLevel } from '../src/level.js'
 import { createRenderer } from '../src/render.js'
 import {
@@ -165,6 +165,9 @@ test('the next floor keeps the score and a retry keeps the maze seed', () => {
 test('textures and one rendered frame are not blank', () => {
   const assets = buildAssets()
   assert.equal(assets.walls[TILE.STONE].length, 64 * 64 * 4)
+  assert.equal(assets.enemy.walk[0].length, SPRITE * SPRITE * 4)
+  assert.equal(assets.weapon.idle.length, SPRITE * SPRITE * 4)
+  assert.equal(assets.weapon.fire.length, SPRITE * SPRITE * 4)
   assert.equal(assets.enemy.walk.length, 4)
   let opaque = 0
   const sentry = assets.enemy.walk[0]
